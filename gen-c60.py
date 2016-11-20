@@ -1,5 +1,6 @@
 # TODO: set quality
 # TODO: double bond in hexgon
+# TODO: rename bound -> bond
 
 import os
 import sys
@@ -44,48 +45,65 @@ def join_meshes(meshes):
     return bpy.context.object
 
 
-def build_pentagon(bound_length, atom_size):
+def build_pentagon(bound_length):
     t = bound_length
     R5 = t * sqrt(10) * sqrt(5 + sqrt(5)) / 10
-    base_atoms = []
-    meshes = []
+    penta = []
     for i in range(5):
         a = 2 * pi / 5 * i
         x, y = R5 * sin(a), R5 * cos(a)
-        base_atoms.append(Vector((x, y, 0)))
-        meshes.append(create_atom(base_atoms[-1], atom_size))
-    for i in range(5):
-        meshes.append(create_bound(base_atoms[i], base_atoms[(i + 1) % 5], atom_size))
-    return (join_meshes(meshes), base_atoms)
+        penta.append(Vector((x, y, 0)))
+    return penta
 
 
-def build_hexagon(bound_length, atom_size):
+def build_hexagon(bound_length):
     t = bound_length
     R6 = t
-    base_atoms = []
-    meshes = []
+    hexa = []
     for i in range(6):
         a = 2 * pi / 6 * i
         x, y = R6 * sin(a), R6 * cos(a)
-        base_atoms.append(Vector((x, y, 0)))
-        meshes.append(create_atom(base_atoms[-1], atom_size))
-    for i in range(6):
-        meshes.append(create_bound(base_atoms[i], base_atoms[(i + 1) % 6], atom_size))
-    return (join_meshes(meshes), base_atoms)
+        hexa.append(Vector((x, y, 0)))
+    return hexa
 
+def translate(shape, vec):
+    m = Matrix.Translation(vec)
+    for i in range(len(shape)):
+        shape[i] = m * shape[i]
+
+
+def rotate(shape, value, axis):
+    m = Matrix.Rotation(value, 4, axis)
+    for i in range(len(shape)):
+        shape[i] = m * shape[i]
+
+
+def flesh_out(shapes, bound_length, atom_size):
+    for shape in shapes:
+        for i in range(len(shape)):
+            create_atom(shape[i], atom_size)
+            create_bound(shape[i], shape[i - 1], atom_size)
 
 def build_c60(bound_length, atom_size):
-    penta, penta_points = build_pentagon(bound_length, atom_size)
+    # base penta
+    penta = build_pentagon(bound_length)
+
+    # first hexa belt
+    hexa1 = []
     for i in range(5):
-        hexa, hexa_points = build_hexagon(bound_length, atom_size)
-        #r = Matrix.Rotation(pi / 2, 4, Vector((0, 1, 0)))
-        hexa.select = True
-        bpy.ops.transform.translate(value=penta_points[i] - hexa_points[0])
-        penta_edge = (penta_points[(i + 1) % 5] - penta_points[i]).normalized()
-        hexa_edge = (hexa_points[1] - hexa_points[0]).normalized()
+        hexa = build_hexagon(bound_length)
+        penta_edge = (penta[(i + 1) % 5] - penta[i]).normalized()
+        hexa_edge = (hexa[1] - hexa[0]).normalized()
         diff = acos(penta_edge.normalized().dot(hexa_edge.normalized()))
-        bpy.ops.transform.rotate(value=-diff, axis=penta_edge.cross(hexa_edge))
-        bpy.ops.transform.rotate(value=pi + pi/5, axis=penta_edge)
+        rotate(hexa, -diff, penta_edge.cross(hexa_edge))
+        rotate(hexa, pi + pi / 5, penta_edge) # TODO: pi/5 is heuristic
+        translate(hexa, penta[i] - hexa[0])
+        hexa1.append(hexa)
+
+    flesh_out([penta] + hexa1, bound_length, atom_size)
+    # interleaving penta
+    #for i in range(1):
+    #    inter_penta, ipenta_pts = build_pentagon(bound_length, atom_size)
 
 
 def render(filename):
