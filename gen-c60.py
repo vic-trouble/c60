@@ -97,12 +97,13 @@ def build_c60(bound_length, atom_size):
 
     # first hexa belt
     hexa1 = []
+    unfold = 0.65
     for i in range(5):
         hexa = build_hexagon(bound_length)
         penta_edge = penta[(i + 1) % 5] - penta[i]
         hexa_edge = hexa[1] - hexa[0]
         align(hexa, penta_edge, hexa_edge, rev=True)
-        rotate(hexa, pi + pi / 5, penta_edge) # TODO: pi/5 is heuristic
+        rotate(hexa, pi + unfold, penta_edge)
         translate(hexa, penta[i] - hexa[0])
         hexa1.append(hexa)
 
@@ -143,25 +144,25 @@ def build_c60(bound_length, atom_size):
         translate(hexa, ipenta[2] - hexa[0])
         ihexa1.append(hexa)
 
-    # another interleaving penta
-    ipenta2 = []
+    # another interleaving hexa
+    ihexa2 = []
     for i in range(5):
-        ipenta = build_pentagon(bound_length)
-        ipenta_normal = (ipenta[1] - ipenta[0]).cross(ipenta[-1] - ipenta[0])
+        ihexa = build_hexagon(bound_length)
+        ihexa_normal = (ihexa[1] - ihexa[0]).cross(ihexa[-1] - ihexa[0])
 
         hexa = ihexa1[i]
         nhexa = ihexa1[(i + 1) % 5]
         hexa_normal = (hexa[5] - hexa[0]).cross(nhexa[4] - nhexa[3])
-        align(ipenta, ipenta_normal, hexa_normal)
+        align(ihexa, ihexa_normal, hexa_normal)
 
         hexa_edge = hexa[5] - hexa[0]
-        ipenta_edge = ipenta[1] - ipenta[0]
-        align(ipenta, ipenta_edge, hexa_edge)
+        ihexa_edge = ihexa[1] - ihexa[0]
+        align(ihexa, ihexa_edge, hexa_edge)
 
-        translate(ipenta, hexa[0] - ipenta[0])
-        ipenta2.append(ipenta)
+        translate(ihexa, hexa[0] - ihexa[0])
+        ihexa2.append(ihexa)
 
-    flesh_out([penta] + hexa1 + ipenta1 + ihexa1 + ipenta2, bound_length, atom_size)
+    flesh_out([penta] + hexa1 + ipenta1 + ihexa1 + ihexa2, bound_length, atom_size)
 
 
 def render(filename):
