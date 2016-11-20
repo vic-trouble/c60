@@ -88,22 +88,24 @@ def flesh_out(shapes, bound_length, atom_size):
     eps = 0.05
     atoms = []
     bonds = []
+    meshes = []
     for shape in shapes:
         for i in range(len(shape)):
             distance = 1000
             for a in atoms:
                 distance = min(distance, (a - shape[i]).length)
             if distance > eps:
-                create_atom(shape[i], atom_size)
+                meshes.append(create_atom(shape[i], atom_size))
                 atoms.append(shape[i])
             distance = 1000
             for b in bonds:
                 distance = min(distance, (b[0] - shape[i]).length + (b[1] - shape[i - 1]).length,
                                          (b[1] - shape[i]).length + (b[0] - shape[i - 1]).length)
             if distance > eps:
-                create_bound(shape[i], shape[i - 1], atom_size)
+                meshes.append(create_bound(shape[i], shape[i - 1], atom_size))
                 bonds.append((shape[i], shape[i - 1]))
     print('{} atoms, {} bonds'.format(len(atoms), len(bonds)))
+    return join_meshes(meshes)
 
 
 def build_c60(bound_length, atom_size):
@@ -213,7 +215,7 @@ def build_c60(bound_length, atom_size):
         translate(hexa, ipenta[0] - hexa[0])
         hexa2.append(hexa)
 
-    flesh_out(hexa1 + ipenta1 + ihexa1 + ihexa2 + ipenta2 + hexa2, bound_length, atom_size)
+    return flesh_out(hexa1 + ipenta1 + ihexa1 + ihexa2 + ipenta2 + hexa2, bound_length, atom_size)
 
 
 def render(filename):
