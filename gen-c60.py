@@ -143,7 +143,25 @@ def build_c60(bound_length, atom_size):
         translate(hexa, ipenta[2] - hexa[0])
         ihexa1.append(hexa)
 
-    flesh_out([penta] + hexa1 + ipenta1 + ihexa1, bound_length, atom_size)
+    # another interleaving penta
+    ipenta2 = []
+    for i in range(5):
+        ipenta = build_pentagon(bound_length)
+        ipenta_normal = (ipenta[1] - ipenta[0]).cross(ipenta[-1] - ipenta[0])
+
+        hexa = ihexa1[i]
+        nhexa = ihexa1[(i + 1) % 5]
+        hexa_normal = (hexa[5] - hexa[0]).cross(nhexa[4] - nhexa[3])
+        align(ipenta, ipenta_normal, hexa_normal)
+
+        hexa_edge = hexa[5] - hexa[0]
+        ipenta_edge = ipenta[1] - ipenta[0]
+        align(ipenta, ipenta_edge, hexa_edge)
+
+        translate(ipenta, hexa[0] - ipenta[0])
+        ipenta2.append(ipenta)
+
+    flesh_out([penta] + hexa1 + ipenta1 + ihexa1 + ipenta2, bound_length, atom_size)
 
 
 def render(filename):
