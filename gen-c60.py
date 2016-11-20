@@ -14,40 +14,16 @@ except ImportError:
 
 from math import pi, sqrt, sin, cos, tan
 
-class Point:
-
-    def __init__(self, *args):
-        """ Tuple or x, y, z """
-        if len(args) == 1:
-            assert isinstance(*args, tuple)
-            args = tuple(*args)
-        assert len(args) == 3
-        self.x = args[0]
-        self.y = args[1]
-        self.z = args[2]
-
-    def __sub__(self, pt):
-        assert isinstance(pt, Point)
-        return Vector((self.x - pt.x, self.y - pt.y, self.z - pt.z))
-
-    def __add__(self, vec):
-        assert isinstance(vec, Vector)
-        return Point(self.x + vec.x, self.y + vec.y, self.z + vec.z)
-
-    def to_tuple(self):
-        return (self.x, self.y, self.z)
-
-
 def clear_all():
     bpy.ops.object.select_by_type(type='MESH')
     bpy.ops.object.delete()
 
 
-def create_atom(pos, atom_size):
+def create_atom(pos: Vector, atom_size):
     bpy.ops.mesh.primitive_uv_sphere_add(location=pos.to_tuple(), size=atom_size)
 
 
-def create_bound(pt1, pt2, atom_size):
+def create_bound(pt1: Vector, pt2: Vector, atom_size):
     dir = pt2 - pt1
     #bpy.context.object.rotation_mode = 'QUATERNION'
     length = dir.length
@@ -66,7 +42,7 @@ def build_c60(bound_length, atom_size):
     for i in range(5):
         a = 2 * pi / 5 * i
         x, y = R5 * sin(a), R5 * cos(a)
-        base_atoms.append(Point(x, y, 0))
+        base_atoms.append(Vector((x, y, 0)))
         create_atom(base_atoms[-1], atom_size)
     for i in range(5):
         create_bound(base_atoms[i], base_atoms[(i + 1) % 5], atom_size)
@@ -76,11 +52,11 @@ def build_c60(bound_length, atom_size):
     for i in range(5):
         z = t * sqrt(2) / 2
         a = 2 * pi / 5 * i
-        x, y = base_atoms[i].x, base_atoms[i].y
+        x, y = base_atoms[i][:2]
         R = z * sqrt(2) / 2
         x += R * sin(a)
         y += R * cos(a)
-        hexa1_atoms.append(Point(x, y, z))
+        hexa1_atoms.append(Vector((x, y, z)))
         create_atom(hexa1_atoms[-1], atom_size)
         create_bound(hexa1_atoms[-1], base_atoms[i], atom_size)
     hexa2_atoms = []
