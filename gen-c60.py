@@ -12,7 +12,7 @@ except ImportError:
     os.system(r'open ~/bin/blender-2.78a-OSX_10.6-x86_64/blender.app/Contents/MacOS/blender --args --python ' + __file__)
     sys.exit()
 
-from math import pi, sqrt, sin, cos, tan
+from math import pi, sqrt, sin, cos, tan, acos
 
 def clear_all():
     bpy.ops.object.select_by_type(type='MESH')
@@ -41,7 +41,7 @@ def join_meshes(meshes):
         obj.select = True
     bpy.context.scene.objects.active = meshes[0]
     bpy.ops.object.join()
-    bpy.ops.object.select_all(action='DESELECT')
+    return bpy.context.object
 
 
 def build_pentagon(bound_length, atom_size):
@@ -56,11 +56,36 @@ def build_pentagon(bound_length, atom_size):
         meshes.append(create_atom(base_atoms[-1], atom_size))
     for i in range(5):
         meshes.append(create_bound(base_atoms[i], base_atoms[(i + 1) % 5], atom_size))
-    join_meshes(meshes)
+    return (join_meshes(meshes), base_atoms)
+
+
+def build_hexagon(bound_length, atom_size):
+    t = bound_length
+    R6 = t
+    base_atoms = []
+    meshes = []
+    for i in range(6):
+        a = 2 * pi / 6 * i
+        x, y = R6 * sin(a), R6 * cos(a)
+        base_atoms.append(Vector((x, y, 0)))
+        meshes.append(create_atom(base_atoms[-1], atom_size))
+    for i in range(6):
+        meshes.append(create_bound(base_atoms[i], base_atoms[(i + 1) % 6], atom_size))
+    return (join_meshes(meshes), base_atoms)
 
 
 def build_c60(bound_length, atom_size):
-    base = build_pentagon(bound_length, atom_size)
+    penta, penta_points = build_pentagon(bound_length, atom_size)
+    for i in range(5):
+        hexa, hexa_points = build_hexagon(bound_length, atom_size)
+        #r = Matrix.Rotation(pi / 2, 4, Vector((0, 1, 0)))
+        hexa.select = True
+        bpy.ops.transform.translate(value=penta_points[i] - hexa_points[0])
+        penta_edge = (penta_points[(i + 1) % 5] - penta_points[i]).normalized()
+        hexa_edge = (hexa_points[1] - hexa_points[0]).normalized()
+        diff = acos(penta_edge.normalized().dot(hexa_edge.normalized()))
+        bpy.ops.transform.rotate(value=-diff, axis=penta_edge.cross(hexa_edge))
+        bpy.ops.transform.rotate(value=pi + pi/5, axis=penta_edge)
 
 
 def render(filename):
