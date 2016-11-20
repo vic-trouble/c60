@@ -21,6 +21,7 @@ def clear_all():
 
 def create_atom(pos: Vector, atom_size):
     bpy.ops.mesh.primitive_uv_sphere_add(location=pos.to_tuple(), size=atom_size)
+    return bpy.context.object
 
 
 def create_bound(pt1: Vector, pt2: Vector, atom_size):
@@ -31,62 +32,35 @@ def create_bound(pt1: Vector, pt2: Vector, atom_size):
     up = Vector((0, 0, 1))
     rotation = up.rotation_difference(dir).to_euler()
     bpy.ops.mesh.primitive_cylinder_add(radius=atom_size / 2, location=origin, depth=length, rotation=rotation)
+    return bpy.context.object
 
 
-def build_c60(bound_length, atom_size):
+def join_meshes(meshes):
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in meshes:
+        obj.select = True
+    bpy.context.scene.objects.active = meshes[0]
+    bpy.ops.object.join()
+    bpy.ops.object.select_all(action='DESELECT')
+
+
+def build_pentagon(bound_length, atom_size):
     t = bound_length
     R5 = t * sqrt(10) * sqrt(5 + sqrt(5)) / 10
-
-    # build base pentagon
     base_atoms = []
+    meshes = []
     for i in range(5):
         a = 2 * pi / 5 * i
         x, y = R5 * sin(a), R5 * cos(a)
         base_atoms.append(Vector((x, y, 0)))
-        create_atom(base_atoms[-1], atom_size)
+        meshes.append(create_atom(base_atoms[-1], atom_size))
     for i in range(5):
-        create_bound(base_atoms[i], base_atoms[(i + 1) % 5], atom_size)
+        meshes.append(create_bound(base_atoms[i], base_atoms[(i + 1) % 5], atom_size))
+    join_meshes(meshes)
 
-    # build hexagon belt
-    hexa1_atoms = []
-    for i in range(5):
-        z = t * sqrt(2) / 2
-        a = 2 * pi / 5 * i
-        x, y = base_atoms[i][:2]
-        R = z * sqrt(2) / 2
-        x += R * sin(a)
-        y += R * cos(a)
-        hexa1_atoms.append(Vector((x, y, z)))
-        create_atom(hexa1_atoms[-1], atom_size)
-        create_bound(hexa1_atoms[-1], base_atoms[i], atom_size)
 
-    hexa2_atoms = []
-    for i in range(5):
-        b = base_atoms[i]
-        h = hexa1_atoms[i]
-        n = base_atoms[(i + 1) % 5]
-        p = base_atoms[(i - 1 + 5) % 5]
-        bh = h - b
-        bn = n - b
-        bp = p - b
-        perp_n = bh.cross(bn)
-        rot_n = Matrix.Rotation(pi / 3, 4, perp_n)
-        bhrot_n = bh.copy()
-        bhrot_n.rotate(rot_n)
-        o = h + bhrot_n
-        hexa2_atoms.append(o)
-        create_atom(o, atom_size)
-        create_bound(o, h, atom_size)
-
-        perp_p = bh.cross(bp)
-        rot_p = Matrix.Rotation(pi / 3, 4, perp_p)
-        bhrot_p = bh.copy()
-        bhrot_p.rotate(rot_p)
-        o = h + bhrot_p
-        hexa2_atoms.append(o)
-        create_atom(o, atom_size)
-        create_bound(o, h, atom_size)
-
+def build_c60(bound_length, atom_size):
+    base = build_pentagon(bound_length, atom_size)
 
 
 def render(filename):
