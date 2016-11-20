@@ -120,12 +120,30 @@ def build_c60(bound_length, atom_size):
 
         ipenta_edge = ipenta[1] - ipenta[0]
         hexa_edge = hexa[3] - hexa[2]
-        align(ipenta, ipenta_edge, hexa_edge, rev=False)
+        align(ipenta, ipenta_edge, hexa_edge)
 
         translate(ipenta, hexa[2] - ipenta[0])
         ipenta1.append(ipenta)
 
-    flesh_out([penta] + hexa1 + ipenta1, bound_length, atom_size)
+    # interleaving hexa
+    ihexa1 = []
+    for i in range(5):
+        hexa = build_hexagon(bound_length)
+        hexa_normal = (hexa[1] - hexa[0]).cross(hexa[-1] - hexa[0])
+
+        ipenta = ipenta1[i]
+        nipenta = ipenta1[(i - 1 + 5) % 5]
+        ipenta_normal = (ipenta[2] - ipenta[1]).cross(nipenta[4] - nipenta[3])
+        align(hexa, hexa_normal, ipenta_normal)
+
+        ipenta_edge = ipenta[1] - ipenta[2]
+        hexa_edge = hexa[1] - hexa[0]
+        align(hexa, hexa_edge, ipenta_edge)
+
+        translate(hexa, ipenta[2] - hexa[0])
+        ihexa1.append(hexa)
+
+    flesh_out([penta] + hexa1 + ipenta1 + ihexa1, bound_length, atom_size)
 
 
 def render(filename):
