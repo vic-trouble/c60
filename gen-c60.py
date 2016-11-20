@@ -1,3 +1,6 @@
+# TODO: set quality
+# TODO: double bond in hexgon
+
 import os
 import sys
 
@@ -8,8 +11,6 @@ except ImportError:
     print('launching blender')
     os.system(r'"C:\Program Files\Blender Foundation\Blender\blender.exe" --python ' + __file__)
     sys.exit()
-
-# TODO: set quality
 
 from math import pi, sqrt, sin, cos, tan
 
