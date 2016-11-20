@@ -25,7 +25,9 @@ def create_bound(pos1, pos2):
     #bpy.context.object.rotation_mode = 'QUATERNION'
     length = dir.length
     origin = (Vector(pos1) + dir / 2).to_tuple()
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.5, location=origin, depth=length) # rotation=dir.to_track_quat('X', 'Y').to_euler(), 
+    up = Vector((0, 0, 1))
+    rotation = up.rotation_difference(dir).to_euler()
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.5, location=origin, depth=length, rotation=rotation)
     
     
 def build_c60(bound_length):
@@ -46,12 +48,20 @@ def build_c60(bound_length):
     
 def render(filename):
     bpy.context.scene.render.filepath = filename
-    bpy.context.scene.render.resolution_x = 1024 #perhaps set resolution in code
+    bpy.context.scene.render.resolution_x = 1024
     bpy.context.scene.render.resolution_y = 768
     bpy.ops.render.render(write_still=True)
-        
-clear_all()
-build_c60(10)
 
-render(os.path.join(os.getcwd(), '1.png'))
+##########################################################################################
+
+output = os.path.join(os.getcwd(), '1.png')
+if os.path.exists(output):
+    os.unlink(output)
+
+try:        
+    clear_all()
+    build_c60(10)
+    render(output)
+except Exception as e:
+    print(e, file=sys.stderr)
 sys.exit()
