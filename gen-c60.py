@@ -78,11 +78,18 @@ def rotate(shape, value, axis):
         shape[i] = m * shape[i]
 
 
+def align(shape, src_vec, dst_vec, rev=False):
+    src_vec = src_vec.normalized()
+    dst_vec = dst_vec.normalized()
+    rotate(shape, acos(src_vec.dot(dst_vec)) * (-1 if rev else 1), src_vec.cross(dst_vec))
+
+
 def flesh_out(shapes, bound_length, atom_size):
     for shape in shapes:
         for i in range(len(shape)):
             create_atom(shape[i], atom_size)
             create_bound(shape[i], shape[i - 1], atom_size)
+
 
 def build_c60(bound_length, atom_size):
     # base penta
@@ -92,18 +99,33 @@ def build_c60(bound_length, atom_size):
     hexa1 = []
     for i in range(5):
         hexa = build_hexagon(bound_length)
-        penta_edge = (penta[(i + 1) % 5] - penta[i]).normalized()
-        hexa_edge = (hexa[1] - hexa[0]).normalized()
-        diff = acos(penta_edge.normalized().dot(hexa_edge.normalized()))
-        rotate(hexa, -diff, penta_edge.cross(hexa_edge))
+        penta_edge = penta[(i + 1) % 5] - penta[i]
+        hexa_edge = hexa[1] - hexa[0]
+        align(hexa, penta_edge, hexa_edge, rev=True)
         rotate(hexa, pi + pi / 5, penta_edge) # TODO: pi/5 is heuristic
         translate(hexa, penta[i] - hexa[0])
         hexa1.append(hexa)
 
-    flesh_out([penta] + hexa1, bound_length, atom_size)
     # interleaving penta
-    #for i in range(1):
-    #    inter_penta, ipenta_pts = build_pentagon(bound_length, atom_size)
+    ipenta1 = []
+    for i in range(5):
+        ipenta = build_pentagon(bound_length)
+        ipenta_normal = (ipenta[1] - ipenta[0]).cross(ipenta[-1] - ipenta[0])
+
+        hexa = hexa1[i]
+        nhexa = hexa1[(i + 1) % 5]
+        hexa_normal = (hexa[3] - hexa[2]).cross(nhexa[4] - nhexa[5])
+
+        align(ipenta, ipenta_normal, hexa_normal)
+
+        ipenta_edge = ipenta[1] - ipenta[0]
+        hexa_edge = hexa[3] - hexa[2]
+        align(ipenta, ipenta_edge, hexa_edge, rev=False)
+
+        translate(ipenta, hexa[2] - ipenta[0])
+        ipenta1.append(ipenta)
+
+    flesh_out([penta] + hexa1 + ipenta1, bound_length, atom_size)
 
 
 def render(filename):
