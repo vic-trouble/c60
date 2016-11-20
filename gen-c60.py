@@ -6,7 +6,7 @@ import sys
 
 try:
     import bpy
-    from mathutils import Vector
+    from mathutils import Vector, Matrix
 except ImportError:
     print('launching blender')
     os.system(r'open ~/bin/blender-2.78a-OSX_10.6-x86_64/blender.app/Contents/MacOS/blender --args --python ' + __file__)
@@ -59,12 +59,34 @@ def build_c60(bound_length, atom_size):
         hexa1_atoms.append(Vector((x, y, z)))
         create_atom(hexa1_atoms[-1], atom_size)
         create_bound(hexa1_atoms[-1], base_atoms[i], atom_size)
+
     hexa2_atoms = []
     for i in range(5):
-        ba = base_atoms[i]
-        ha = hexa1_atoms[i]
-        #o = ha +
-        #hexa2_atoms
+        b = base_atoms[i]
+        h = hexa1_atoms[i]
+        n = base_atoms[(i + 1) % 5]
+        p = base_atoms[(i - 1 + 5) % 5]
+        bh = h - b
+        bn = n - b
+        bp = p - b
+        perp_n = bh.cross(bn)
+        rot_n = Matrix.Rotation(pi / 3, 4, perp_n)
+        bhrot_n = bh.copy()
+        bhrot_n.rotate(rot_n)
+        o = h + bhrot_n
+        hexa2_atoms.append(o)
+        create_atom(o, atom_size)
+        create_bound(o, h, atom_size)
+
+        perp_p = bh.cross(bp)
+        rot_p = Matrix.Rotation(pi / 3, 4, perp_p)
+        bhrot_p = bh.copy()
+        bhrot_p.rotate(rot_p)
+        o = h + bhrot_p
+        hexa2_atoms.append(o)
+        create_atom(o, atom_size)
+        create_bound(o, h, atom_size)
+
 
 
 def render(filename):
