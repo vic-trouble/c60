@@ -180,7 +180,25 @@ def build_c60(bound_length, atom_size):
         translate(ipenta, hexa[2] - ipenta[0])
         ipenta2.append(ipenta)
 
-    flesh_out([penta] + hexa1 + ipenta1 + ihexa1 + ihexa2 + ipenta2, bound_length, atom_size)
+    # second hexa belt
+    hexa2 = []
+    for i in range(5):
+        hexa = build_hexagon(bound_length)
+        hexa_normal = (hexa[1] - hexa[0]).cross(hexa[-1] - hexa[0])
+
+        ipenta = ipenta2[i]
+        nipenta = ipenta2[(i + 1) % 5]
+        ipenta_normal = (ipenta[4] - ipenta[0]).cross(nipenta[4] - nipenta[3])
+        align(hexa, hexa_normal, ipenta_normal)
+
+        ipenta_edge = ipenta[4] - ipenta[0]
+        hexa_edge = hexa[1] - hexa[0]
+        align(hexa, hexa_edge, ipenta_edge)
+
+        translate(hexa, ipenta[0] - hexa[0])
+        hexa2.append(hexa)
+
+    flesh_out([penta] + hexa1 + ipenta1 + ihexa1 + ihexa2 + ipenta2 + hexa2, bound_length, atom_size)
 
 
 def render(filename):
