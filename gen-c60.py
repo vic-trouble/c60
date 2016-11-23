@@ -4,13 +4,15 @@
 
 import os
 import sys
+from _collections import defaultdict
 
 try:
     import bpy
     from mathutils import Vector, Matrix
 except ImportError:
     print('launching blender')
-    os.system(r'open ~/bin/blender-2.78a-OSX_10.6-x86_64/blender.app/Contents/MacOS/blender --args --python ' + __file__)
+	# os.system(r'open ~/bin/blender-2.78a-OSX_10.6-x86_64/blender.app/Contents/MacOS/blender --args --python ' + __file__)
+    os.system(r'"C:\Program Files\Blender Foundation\Blender\blender.exe" --python ' + __file__)
     sys.exit()
 
 from math import pi, sqrt, sin, cos, tan, acos
@@ -88,22 +90,73 @@ def flesh_out(shapes, bound_length, atom_size):
     eps = 0.05
     atoms = []
     bonds = []
+    graph = defaultdict(list) # atom index -> [atom index]
+    belong = defaultdict(list) # atom index -> [shape index]
     meshes = []
-    for shape in shapes:
-        for i in range(len(shape)):
-            distance = 1000
-            for a in atoms:
-                distance = min(distance, (a - shape[i]).length)
-            if distance > eps:
-                meshes.append(create_atom(shape[i], atom_size))
-                atoms.append(shape[i])
+    for j, shape in enumerate(shapes):
+        # fill-in helper collections
+        indices = []
+        for atom in shape:
+            min_distance = None
+            index = None
+            for i, a in enumerate(atoms):
+                distance = (a - atom).length
+                if min_distance is None or distance < min_distance:
+                    min_distance = distance
+                    index = i
+            if index is None or min_distance > eps:
+                index = len(atoms)
+                atoms.append(atom)
+            indices.append(index)
+
+        for i in indices:
+            belong[i].append(j)
+
+        # create primitive meshes
+        for i in range(len(indices)):
+            meshes.append(create_atom(atoms[indices[i]], atom_size))
+            
+            bond_i = indices[i]
+            bond_j = indices[i - 1]
+            graph[bond_i].append(bond_j)
+
+            start = atoms[bond_i]
+            end = atoms[bond_j]
             distance = 1000
             for b in bonds:
-                distance = min(distance, (b[0] - shape[i]).length + (b[1] - shape[i - 1]).length,
-                                         (b[1] - shape[i]).length + (b[0] - shape[i - 1]).length)
+                distance = min(distance, (b[0] - start).length + (b[1] - end).length,
+                                         (b[1] - start).length + (b[0] - end).length)
             if distance > eps:
-                meshes.append(create_bound(shape[i], shape[i - 1], atom_size))
-                bonds.append((shape[i], shape[i - 1]))
+                meshes.append(create_bound(start, end, atom_size))
+                bonds.append((start, end))
+
+    assert len(graph) == 60
+    
+    # annotate double-bonds
+    hexa = [k for k in range(len(shapes)) if len(shapes[k]) == 6]
+    for i in graph:
+        for j in graph[i]:
+            ij_shapes = list(set(belong[i]) & set(belong[j]))
+            ij_hexa = [k in hexa for k in ij_shapes]
+            print(ij_shapes, ij_hexa)
+            if sum(ij_hexa) == 2:
+                shape_index = ij_hexa.index(True)
+                shape = shapes[ij_shapes[shape_index]]
+
+                center = sum(shape, Vector((0, 0, 0))) / len(shape)
+
+                start = atoms[i]
+                end = atoms[j]
+                a = 0.75
+                b = 1 - a
+                sub_start = start * a + end * b
+                sub_end = start * b + end * a
+                c = 0.85
+                d = 1 - c
+                sub_start = sub_start * c + center * d
+                sub_end = sub_end * c + center * d
+                meshes.append(create_bound(sub_start, sub_end, atom_size * 2 / 3))
+
     print('{} atoms, {} bonds'.format(len(atoms), len(bonds)))
     return join_meshes(meshes)
 
@@ -220,20 +273,18 @@ def build_c60(bound_length, atom_size):
 
 def render(filename):
     bpy.context.scene.render.filepath = filename
-    bpy.context.scene.render.resolution_x = 1024
-    bpy.context.scene.render.resolution_y = 768
+    bpy.context.scene.render.resolution_x = 1600
+    bpy.context.scene.render.resolution_y = 1200
     bpy.ops.render.render(write_still=True)
 
 ##########################################################################################
 
-output = os.path.join(os.getcwd(), '1.png')
-if os.path.exists(output):
-    os.unlink(output)
+for i in (2,):
+    output = os.path.join(os.getcwd(), '{}.png'.format(i))
+    if os.path.exists(output):
+        os.unlink(output)
 
-try:
     clear_all()
-    build_c60(2, 0.2)
+    build_c60(0.8, 0.08 * i)
     render(output)
-except Exception as e:
-    print(e, file=sys.stderr)
 #sys.exit()
