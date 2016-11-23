@@ -1,6 +1,4 @@
 # TODO: set quality
-# TODO: double bond in hexgon
-# TODO: rename bound -> bond
 
 import os
 import sys
@@ -29,7 +27,7 @@ def create_atom(pos: Vector, atom_size):
     return bpy.context.object
 
 
-def create_bound(pt1: Vector, pt2: Vector, atom_size):
+def create_bond(pt1: Vector, pt2: Vector, atom_size):
     dir = pt2 - pt1
     #bpy.context.object.rotation_mode = 'QUATERNION'
     length = dir.length
@@ -49,8 +47,8 @@ def join_meshes(meshes):
     return bpy.context.object
 
 
-def build_pentagon(bound_length):
-    t = bound_length
+def build_pentagon(bond_length):
+    t = bond_length
     R5 = t * sqrt(10) * sqrt(5 + sqrt(5)) / 10
     penta = []
     for i in range(5):
@@ -60,8 +58,8 @@ def build_pentagon(bound_length):
     return penta
 
 
-def build_hexagon(bound_length):
-    t = bound_length
+def build_hexagon(bond_length):
+    t = bond_length
     R6 = t
     hexa = []
     for i in range(6):
@@ -88,7 +86,7 @@ def align(shape, src_vec, dst_vec, rev=False):
     rotate(shape, acos(src_vec.dot(dst_vec)) * (-1 if rev else 1), src_vec.cross(dst_vec))
 
 
-def flesh_out(shapes, bound_length, atom_size):
+def flesh_out(shapes, bond_length, atom_size):
     eps = 0.05
     atoms = []
     bonds = []
@@ -126,7 +124,7 @@ def flesh_out(shapes, bound_length, atom_size):
             if (bond_i, bond_j) not in bonds and (bond_j, bond_i) not in bonds:
                 start = atoms[bond_i]
                 end = atoms[bond_j]
-                bond_meshes.append(create_bound(start, end, atom_size))
+                bond_meshes.append(create_bond(start, end, atom_size))
                 bonds.append((bond_i, bond_j))
 
     assert len(graph) == 60
@@ -157,21 +155,21 @@ def flesh_out(shapes, bound_length, atom_size):
                     d = 1 - c
                     sub_start = sub_start * c + center * d
                     sub_end = sub_end * c + center * d
-                    double_bond_meshes.append(create_bound(sub_start, sub_end, atom_size * 2 / 3))
+                    double_bond_meshes.append(create_bond(sub_start, sub_end, atom_size * 2 / 3))
 
     print('{} atoms, {} bonds, {} double bonds'.format(len(atom_meshes), len(bond_meshes), len(double_bond_meshes)))
     return join_meshes(atom_meshes + bond_meshes + double_bond_meshes)
 
 
-def build_c60(bound_length, atom_size):
+def build_c60(bond_length, atom_size):
     # base penta
-    penta = build_pentagon(bound_length)
+    penta = build_pentagon(bond_length)
 
     # first hexa belt
     hexa1 = []
     unfold = 0.65
     for i in range(5):
-        hexa = build_hexagon(bound_length)
+        hexa = build_hexagon(bond_length)
         penta_edge = penta[(i + 1) % 5] - penta[i]
         hexa_edge = hexa[1] - hexa[0]
         align(hexa, penta_edge, hexa_edge, rev=True)
@@ -182,7 +180,7 @@ def build_c60(bound_length, atom_size):
     # interleaving penta
     ipenta1 = []
     for i in range(5):
-        ipenta = build_pentagon(bound_length)
+        ipenta = build_pentagon(bond_length)
         ipenta_normal = (ipenta[1] - ipenta[0]).cross(ipenta[-1] - ipenta[0])
 
         hexa = hexa1[i]
@@ -201,7 +199,7 @@ def build_c60(bound_length, atom_size):
     # interleaving hexa
     ihexa1 = []
     for i in range(5):
-        hexa = build_hexagon(bound_length)
+        hexa = build_hexagon(bond_length)
         hexa_normal = (hexa[1] - hexa[0]).cross(hexa[-1] - hexa[0])
 
         ipenta = ipenta1[i]
@@ -219,7 +217,7 @@ def build_c60(bound_length, atom_size):
     # another interleaving hexa
     ihexa2 = []
     for i in range(5):
-        ihexa = build_hexagon(bound_length)
+        ihexa = build_hexagon(bond_length)
         ihexa_normal = (ihexa[1] - ihexa[0]).cross(ihexa[-1] - ihexa[0])
 
         hexa = ihexa1[i]
@@ -237,7 +235,7 @@ def build_c60(bound_length, atom_size):
     # another interleaving penta
     ipenta2 = []
     for i in range(5):
-        ipenta = build_pentagon(bound_length)
+        ipenta = build_pentagon(bond_length)
         ipenta_normal = (ipenta[1] - ipenta[0]).cross(ipenta[-1] - ipenta[0])
 
         hexa = ihexa2[i]
@@ -255,7 +253,7 @@ def build_c60(bound_length, atom_size):
     # second hexa belt
     hexa2 = []
     for i in range(5):
-        hexa = build_hexagon(bound_length)
+        hexa = build_hexagon(bond_length)
         hexa_normal = (hexa[1] - hexa[0]).cross(hexa[-1] - hexa[0])
 
         ipenta = ipenta2[i]
@@ -270,7 +268,7 @@ def build_c60(bound_length, atom_size):
         translate(hexa, ipenta[0] - hexa[0])
         hexa2.append(hexa)
 
-    return flesh_out(hexa1 + ipenta1 + ihexa1 + ihexa2 + ipenta2 + hexa2, bound_length, atom_size)
+    return flesh_out(hexa1 + ipenta1 + ihexa1 + ihexa2 + ipenta2 + hexa2, bond_length, atom_size)
 
 
 def render(filename):
