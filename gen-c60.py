@@ -1,9 +1,8 @@
-# TODO: set quality
-
+from collections import defaultdict
 import os
 import sys
-from collections import defaultdict
 
+QUALITY = 128 # the higher, the better
 MAKE_DOUBLE_BONDS = False
 
 try:
@@ -23,18 +22,17 @@ def clear_all():
 
 
 def create_atom(pos: Vector, atom_size):
-    bpy.ops.mesh.primitive_uv_sphere_add(location=pos.to_tuple(), size=atom_size)
+    bpy.ops.mesh.primitive_uv_sphere_add(location=pos.to_tuple(), size=atom_size, segments=QUALITY)
     return bpy.context.object
 
 
 def create_bond(pt1: Vector, pt2: Vector, atom_size):
     dir = pt2 - pt1
-    #bpy.context.object.rotation_mode = 'QUATERNION'
     length = dir.length
     origin = (pt1 + dir / 2).to_tuple()
     up = Vector((0, 0, 1))
     rotation = up.rotation_difference(dir).to_euler()
-    bpy.ops.mesh.primitive_cylinder_add(radius=atom_size / 2, location=origin, depth=length, rotation=rotation)
+    bpy.ops.mesh.primitive_cylinder_add(radius=atom_size / 2, location=origin, depth=length, rotation=rotation, vertices=QUALITY)
     return bpy.context.object
 
 
