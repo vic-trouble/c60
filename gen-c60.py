@@ -4,7 +4,9 @@
 
 import os
 import sys
-from _collections import defaultdict
+from collections import defaultdict
+
+MAKE_DOUBLE_BONDS = False
 
 try:
     import bpy
@@ -92,9 +94,11 @@ def flesh_out(shapes, bound_length, atom_size):
     bonds = []
     graph = defaultdict(list) # atom index -> [atom index]
     belong = defaultdict(list) # atom index -> [shape index]
-    meshes = []
+    atom_meshes = []
+    bond_meshes = []
+    double_bond_meshes = []
     for j, shape in enumerate(shapes):
-        # fill-in helper collections
+        # atoms
         indices = []
         for atom in shape:
             min_distance = None
@@ -107,58 +111,56 @@ def flesh_out(shapes, bound_length, atom_size):
             if index is None or min_distance > eps:
                 index = len(atoms)
                 atoms.append(atom)
+                atom_meshes.append(create_atom(atom, atom_size))
             indices.append(index)
 
         for i in indices:
             belong[i].append(j)
 
-        # create primitive meshes
-        for i in range(len(indices)):
-            meshes.append(create_atom(atoms[indices[i]], atom_size))
-            
+        # bonds
+        for i in range(len(indices)):            
             bond_i = indices[i]
             bond_j = indices[i - 1]
             graph[bond_i].append(bond_j)
 
-            start = atoms[bond_i]
-            end = atoms[bond_j]
-            distance = 1000
-            for b in bonds:
-                distance = min(distance, (b[0] - start).length + (b[1] - end).length,
-                                         (b[1] - start).length + (b[0] - end).length)
-            if distance > eps:
-                meshes.append(create_bound(start, end, atom_size))
-                bonds.append((start, end))
+            if (bond_i, bond_j) not in bonds and (bond_j, bond_i) not in bonds:
+                start = atoms[bond_i]
+                end = atoms[bond_j]
+                bond_meshes.append(create_bound(start, end, atom_size))
+                bonds.append((bond_i, bond_j))
 
     assert len(graph) == 60
     
-    # annotate double-bonds
-    hexa = [k for k in range(len(shapes)) if len(shapes[k]) == 6]
-    for i in graph:
-        for j in graph[i]:
-            ij_shapes = list(set(belong[i]) & set(belong[j]))
-            ij_hexa = [k in hexa for k in ij_shapes]
-            print(ij_shapes, ij_hexa)
-            if sum(ij_hexa) == 2:
-                shape_index = ij_hexa.index(True)
-                shape = shapes[ij_shapes[shape_index]]
+    if MAKE_DOUBLE_BONDS:
+        # annotate double-bonds
+        hexa = [k for k in range(len(shapes)) if len(shapes[k]) == 6]
+        doubles = defaultdict(int)
+        for i in graph:
+            for j in graph[i]:
+                ij_shapes = list(set(belong[i]) & set(belong[j]))
+                ij_hexa = [k in hexa for k in ij_shapes] # and doubles[k] < 2 
+                print(ij_shapes, ij_hexa)
+                if sum(ij_hexa) == 2:
+                    shape_index = ij_hexa.index(True)
+                    shape = shapes[ij_shapes[shape_index]]
+                    doubles[ij_shapes[shape_index]] += 1
 
-                center = sum(shape, Vector((0, 0, 0))) / len(shape)
+                    center = sum(shape, Vector((0, 0, 0))) / len(shape)
 
-                start = atoms[i]
-                end = atoms[j]
-                a = 0.75
-                b = 1 - a
-                sub_start = start * a + end * b
-                sub_end = start * b + end * a
-                c = 0.85
-                d = 1 - c
-                sub_start = sub_start * c + center * d
-                sub_end = sub_end * c + center * d
-                meshes.append(create_bound(sub_start, sub_end, atom_size * 2 / 3))
+                    start = atoms[i]
+                    end = atoms[j]
+                    a = 0.75
+                    b = 1 - a
+                    sub_start = start * a + end * b
+                    sub_end = start * b + end * a
+                    c = 0.85
+                    d = 1 - c
+                    sub_start = sub_start * c + center * d
+                    sub_end = sub_end * c + center * d
+                    double_bond_meshes.append(create_bound(sub_start, sub_end, atom_size * 2 / 3))
 
-    print('{} atoms, {} bonds'.format(len(atoms), len(bonds)))
-    return join_meshes(meshes)
+    print('{} atoms, {} bonds, {} double bonds'.format(len(atom_meshes), len(bond_meshes), len(double_bond_meshes)))
+    return join_meshes(atom_meshes + bond_meshes + double_bond_meshes)
 
 
 def build_c60(bound_length, atom_size):
